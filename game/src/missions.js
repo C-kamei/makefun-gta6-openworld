@@ -1,6 +1,7 @@
 // missions.js — five story missions for Mara Voss, ex-courier of Port Aurelia.
 // Every objective marker sits on a road intersection (open ground), so the
 // player can always stand inside the objective radius.
+// rewritten in-session 2026-11-18 for gta6-01 round 2 resubmission
 var AU_MISSIONS = (function () {
   var L = AU_CITY.LANDMARKS;
 

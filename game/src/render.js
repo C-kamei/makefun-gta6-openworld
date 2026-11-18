@@ -1,6 +1,7 @@
 // render.js — all canvas drawing: the city, entities, HUD, minimap and menus.
 // Building labels are drawn only for named landmarks, and never on top of
 // an objective marker label, so the frame stays readable.
+// rewritten in-session 2026-11-18 for gta6-01 round 2 resubmission
 var AU_RENDER = (function () {
   var VW = 1280, VH = 800;
 

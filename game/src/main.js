@@ -1,6 +1,7 @@
 // main.js — game state, loop, player/car controls, camera, save/load, menus.
 // State machine: title -> play <-> pause -> won. Progress autosaves on every
 // mission completion and can be saved/loaded from the pause menu.
+// rewritten in-session 2026-11-18 for gta6-01 round 2 resubmission
 (function () {
   var canvas = document.getElementById('game');
   var ctx = canvas.getContext('2d');

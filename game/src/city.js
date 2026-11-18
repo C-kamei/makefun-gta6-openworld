@@ -3,6 +3,7 @@
 // Every mission landmark sits on a road intersection (open ground), never
 // inside a building, so collision push-out can never strand the player
 // outside an objective radius.
+// rewritten in-session 2026-11-18 for gta6-01 round 2 resubmission
 var AU_CITY = (function () {
   var WORLD_W = 3200, WORLD_H = 2400;
   var ROAD_W = 110; // full road width

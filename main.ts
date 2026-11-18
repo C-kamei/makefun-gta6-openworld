@@ -1,5 +1,6 @@
 // main.ts — hands this entry in: copies game/ and screenshots/ into the
 // output directory and writes dossier.json with buildDossier from the kit.
+// rewritten in-session 2026-11-18 for gta6-01 round 2 resubmission
 import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';

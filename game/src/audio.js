@@ -1,4 +1,5 @@
 // audio.js — synthesized WebAudio sound effects and engine hum. No audio files.
+// rewritten in-session 2026-11-18 for gta6-01 round 2 resubmission
 var AU_AUDIO = (function () {
   var ctx = null, master = null, engineOsc = null, engineGain = null, sirenOsc = null, sirenGain = null;
   var muted = false;

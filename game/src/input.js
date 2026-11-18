@@ -1,5 +1,6 @@
 // input.js — keyboard + mouse state. ALL keys are lowercased (single-char AND
 // named keys like Enter/Escape/ArrowUp), so named keys never silently die.
+// rewritten in-session 2026-11-18 for gta6-01 round 2 resubmission
 var AU_INPUT = (function () {
   var keys = {};
   var justPressed = {}; // edge-triggered: set on keydown, cleared only by pressed()

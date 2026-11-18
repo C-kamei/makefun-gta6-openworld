@@ -1,6 +1,7 @@
 // entities.js — player, cars, traffic, pedestrians, police, rivals and bullets.
 // A stolen traffic car is REMOVED from the traffic fleet the moment it is
 // taken, so it never keeps autopilot-driving itself away.
+// rewritten in-session 2026-11-18 for gta6-01 round 2 resubmission
 var AU_ENT = (function () {
   var CAR_COLORS = ['#d94f3d', '#3d7dd9', '#e8c33a', '#7dd93d', '#d9d9d9', '#8a5fd9', '#3dd9c8', '#e07a3a'];
   var PED_COLORS = ['#e8b04b', '#7ab5e8', '#e87ab5', '#8ae87a', '#d9d9d9', '#b57ae8'];
