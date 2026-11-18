@@ -1,160 +1,133 @@
-// Solmar Bay — the story: five missions from Mara, the crew boss, each a
-// short chain of objectives with dialogue. The manager only reads the game
-// state and reports what the player must do next; main.js does the acting.
+// missions.js — five story missions for Mara Voss, ex-courier of Port Aurelia.
+// Every objective marker sits on a road intersection (open ground), so the
+// player can always stand inside the objective radius.
+var AU_MISSIONS = (function () {
+  var L = AU_CITY.LANDMARKS;
 
-import { LANDMARKS } from './city.js';
-
-/** One objective inside a mission. */
-function objective(type, label, target, extra = {}) {
-  return { type, label, target, ...extra };
-}
-
-/** The five missions, in story order. */
-export const MISSIONS = [
-  {
-    id: 'm1',
-    title: 'First Delivery',
-    reward: 500,
-    intro: [
-      'MARA: Danny. You drive courier vans, right? Good. I need a package at Sunset Pier.',
-      'MARA: Grab any car, get to the pier, and don\'t dawdle. The crew is watching.',
-    ],
-    steps: [
-      objective('enter-car', 'Get in a car (walk up to one, press E)', null),
-      objective('goto', 'Drive to Sunset Pier', LANDMARKS.pier),
-      objective('deliver', 'Deliver the package (press E at the pier)', LANDMARKS.pier),
-    ],
-    complete: 'MARA: Clean run. You\'re in, Danny. $500, and the crew knows your name now.',
-  },
-  {
-    id: 'm2',
-    title: 'Borrowed Wheels',
-    reward: 1200,
-    intro: [
-      'MARA: Rico needs a yellow coupe that\'s sitting at the marina. It\'s not his. Yet.',
-      'MARA: Take it — press E by the car — and bring it to Rico\'s Chop Shop. Quick and quiet.',
-    ],
-    steps: [
-      objective('goto', 'Go to the yellow coupe at Solmar Marina', LANDMARKS.marina),
-      objective('steal-target', 'Steal the yellow coupe (press E)', LANDMARKS.marina),
-      objective('deliver-car', 'Deliver the coupe to Rico\'s Chop Shop', LANDMARKS.garage),
-    ],
-    complete: 'RICO: Sweet ride, kid. Mara says you\'re alright. Here\'s $1,200.',
-  },
-  {
-    id: 'm3',
-    title: 'Hot Getaway',
-    reward: 1500,
-    intro: [
-      'MARA: The marina job made the news. The cops are on you — three stars, Danny.',
-      'MARA: Lose them. Get to the hideout and lay low until the heat dies down.',
-    ],
-    steps: [
-      objective('wanted', 'The heat is on — reach the hideout with cops on your tail', LANDMARKS.hideout),
-      objective('evade', 'Lay low at the hideout until your wanted level clears', LANDMARKS.hideout),
-    ],
-    complete: 'MARA: They lost you. That\'s how you survive in Solmar Bay. $1,500.',
-  },
-  {
-    id: 'm4',
-    title: 'Turf Defense',
-    reward: 2000,
-    intro: [
-      'MARA: The Vipers are hitting our warehouse. Five of them, guns out.',
-      'MARA: Get to the Harbor Warehouse and clear them out. Aim with the mouse, click to shoot.',
-    ],
-    steps: [
-      objective('goto', 'Reach the Harbor Warehouse', LANDMARKS.warehouse),
-      objective('kill', 'Clear out the Vipers', LANDMARKS.warehouse, { count: 5 }),
-    ],
-    complete: 'MARA: Warehouse is ours. The Vipers won\'t try that again. $2,000.',
-  },
-  {
-    id: 'm5',
-    title: 'The Marina Heist',
-    reward: 5000,
-    intro: [
-      'MARA: The big one. Bay Trust Bank, midday. Grab the cash, then run.',
-      'MARA: The whole city will be after you. Get the money to the hideout and we\'re rich.',
-    ],
-    steps: [
-      objective('goto', 'Reach Bay Trust Bank', LANDMARKS.bank),
-      objective('grab', 'Grab the cash (press E at the bank)', LANDMARKS.bank),
-      objective('escape', 'Escape to the hideout with the cash — five stars!', LANDMARKS.hideout),
-    ],
-    complete: 'MARA: We did it, Danny. $5,000 is yours. Solmar Bay is ours now.',
-  },
-];
-
-/** Mission progress: which mission, which step, and per-step counters. */
-export function createMissionState() {
-  return {
-    index: 0,
-    step: 0,
-    kills: 0,
-    started: false,
-    done: false,
-    storyDone: false,
-  };
-}
-
-/** The mission currently in play, or null when the story is finished. */
-export function currentMission(state) {
-  if (state.storyDone || state.index >= MISSIONS.length) return null;
-  return MISSIONS[state.index];
-}
-
-/** The objective the player is working on right now. */
-export function currentObjective(state) {
-  const mission = currentMission(state);
-  if (!mission) return null;
-  return mission.steps[Math.min(state.step, mission.steps.length - 1)];
-}
-
-/** Short label for the HUD: "Mission 2 — Borrowed Wheels: <objective>". */
-export function objectiveLabel(state) {
-  const mission = currentMission(state);
-  if (!mission) return 'Free roam — Solmar Bay is yours. Press M for missions.';
-  const obj = currentObjective(state);
-  if (!obj) return mission.title;
-  let label = obj.label;
-  if (obj.type === 'kill') label += ` (${state.kills}/${obj.count})`;
-  return `Mission ${state.index + 1} — ${mission.title}: ${label}`;
-}
-
-/** Advance to the next step (or the next mission) and say what happened. */
-export function advanceMission(state) {
-  const mission = currentMission(state);
-  if (!mission) return { event: 'none' };
-  state.step += 1;
-  state.kills = 0;
-  if (state.step >= mission.steps.length) {
-    const reward = mission.reward;
-    state.index += 1;
-    state.step = 0;
-    state.started = false;
-    if (state.index >= MISSIONS.length) {
-      state.storyDone = true;
-      return { event: 'story-done', reward, line: mission.complete };
-    }
-    return { event: 'mission-done', reward, line: mission.complete, next: MISSIONS[state.index] };
+  function rival(S, x, y, role) {
+    return { x: x, y: y, hp: role === 'boss' ? 220 : 70, angle: 0,
+      cool: 1 + Math.random(), role: role || 'rival' };
   }
-  return { event: 'step-done' };
-}
 
-/** Start the current mission: show its intro and reset its counters. */
-export function startMission(state) {
-  const mission = currentMission(state);
-  if (!mission) return null;
-  state.started = true;
-  state.step = 0;
-  state.kills = 0;
-  return mission;
-}
+  var MISSIONS = [
+    { id: 1, title: 'The Courier\u2019s Debt', giver: 'Rook',
+      brief: 'Pick up the package at the Docks. Walk or drive — just get there.',
+      say: ['ROOK: Mara, you owe me one run. Package is waiting at the Docks.',
+            'MARA: One run. Then we\u2019re square, Rook.'],
+      target: function () { return { x: L.docks.x, y: L.docks.y, label: 'DOCKS PICKUP', r: 80 }; },
+      start: function (S) {},
+      update: function (S, dt) {
+        if (dist(S, L.docks) < 80) return complete(S, 150, 'Package secured. Rook is pleased.');
+        return null;
+      } },
+    { id: 2, title: 'Hot Wheels', giver: 'Rook',
+      brief: 'Steal a car (E) and bring it to Rook\u2019s Garage. The cops will notice.',
+      say: ['ROOK: I need wheels, Mara. Any wheels. Borrow one. Permanently.',
+            'MARA: Borrowing. Right. Try not to get shot at.'],
+      target: function () { return { x: L.garage.x, y: L.garage.y, label: 'ROOK\u2019S GARAGE', r: 90 }; },
+      start: function (S) {},
+      update: function (S, dt) {
+        if (S.player.inCar && dist(S, L.garage) < 90)
+          return complete(S, 300, 'Clean getaway. The garage crew cheers.');
+        return null;
+      } },
+    { id: 3, title: 'Plaza Showdown', giver: 'Vex',
+      brief: 'Vex\u2019s crew owns Meridian Plaza. Take all three of them down. Click to shoot.',
+      say: ['VEX: This plaza is mine, courier. Walk away or get carried away.',
+            'MARA: I\u2019m done walking away.'],
+      target: function () { return { x: L.plaza.x, y: L.plaza.y, label: 'MERIDIAN PLAZA', r: 90 }; },
+      start: function (S) {
+        S.enemies.push(rival(S, L.plaza.x - 60, L.plaza.y - 40));
+        S.enemies.push(rival(S, L.plaza.x + 70, L.plaza.y - 30));
+        S.enemies.push(rival(S, L.plaza.x + 10, L.plaza.y + 70));
+      },
+      update: function (S, dt) {
+        if (S.enemies.length === 0)
+          return complete(S, 500, 'Plaza is yours. Vex\u2019s crew scatters.');
+        return null;
+      } },
+    { id: 4, title: 'The Bank Job', giver: 'Rook',
+      brief: 'Grab the cash at Aurelia Bank, then lose the heat at the Hideout.',
+      say: ['ROOK: The bank vault clerk owes me. Grab the bag, then vanish.',
+            'MARA: And the three stars of heat? That\u2019s the fun part.'],
+      target: function (S) {
+        return S.missionStage === 0
+          ? { x: L.bank.x, y: L.bank.y, label: 'AURELIA BANK', r: 80 }
+          : { x: L.hideout.x, y: L.hideout.y, label: 'HIDEOUT', r: 80 };
+      },
+      start: function (S) {},
+      update: function (S, dt) {
+        if (S.missionStage === 0 && dist(S, L.bank) < 80) {
+          S.missionStage = 1;
+          AU_ENT.addWanted(S, 3, 'Bank alarm tripped');
+          S.toast('Cash grabbed — get to the Hideout!', '#ffd24a');
+          AU_AUDIO.pickup();
+          return null;
+        }
+        if (S.missionStage === 1 && dist(S, L.hideout) < 80)
+          return complete(S, 900, 'Clean. The heat never found the Hideout.');
+        return null;
+      } },
+    { id: 5, title: 'King of the Marina', giver: 'Mara',
+      brief: 'Vex himself waits at the Marina with four guards. End this.',
+      say: ['VEX: You took my plaza, my bank. But the Marina is mine, courier.',
+            'MARA: Then the Marina is where this ends.'],
+      target: function () { return { x: L.marina.x, y: L.marina.y, label: 'MARINA', r: 100 }; },
+      start: function (S) {
+        // All spawns sit ON roads (x=2800 vertical, y=2000 horizontal), and
+        // every sightline from the northern approach runs along a road, so
+        // the Marina building corner can never block a shot.
+        S.enemies.push(rival(S, L.marina.x, L.marina.y - 100, 'guard'));
+        S.enemies.push(rival(S, L.marina.x, L.marina.y + 100, 'guard'));
+        S.enemies.push(rival(S, L.marina.x + 100, L.marina.y, 'guard'));
+        S.enemies.push(rival(S, L.marina.x, L.marina.y + 200, 'guard'));
+        S.enemies.push(rival(S, L.marina.x, L.marina.y, 'boss'));
+      },
+      update: function (S, dt) {
+        if (S.enemies.length === 0) {
+          S.cash += 2000;
+          return 'won';
+        }
+        return null;
+      } }
+  ];
 
-/** Reset the mission state after a bust or a death: same mission, from step 0. */
-export function restartMission(state) {
-  state.step = 0;
-  state.kills = 0;
-  state.started = false;
-}
+  function dist(S, pt) { return Math.hypot(S.player.x - pt.x, S.player.y - pt.y); }
+
+  function complete(S, cash, msg) {
+    S.cash += cash;
+    S.toast(msg + '  +$' + cash, '#7dd93d');
+    AU_AUDIO.missionDone();
+    return 'next';
+  }
+
+  function startMission(S, i) {
+    S.missionIndex = i;
+    S.missionStage = 0;
+    S.enemies.length = 0;
+    var m = MISSIONS[i];
+    if (m) {
+      m.start(S);
+      S.say(m.say);
+      S.toast('MISSION ' + m.id + ': ' + m.title, '#ffd24a');
+    }
+  }
+
+  function current(S) { return MISSIONS[S.missionIndex] || null; }
+
+  function updateMission(S, dt) {
+    var m = current(S);
+    if (!m) return;
+    var r = m.update(S, dt);
+    if (r === 'next') {
+      if (S.missionIndex + 1 < MISSIONS.length) startMission(S, S.missionIndex + 1);
+      else { S.state = 'won'; }
+    } else if (r === 'won') {
+      S.state = 'won';
+      AU_AUDIO.missionDone();
+    }
+  }
+
+  return { MISSIONS: MISSIONS, startMission: startMission, current: current,
+    updateMission: updateMission };
+})();

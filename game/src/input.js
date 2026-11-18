@@ -1,111 +1,44 @@
-// Solmar Bay — input: keyboard state plus the mouse, read fresh every frame.
-// Actions are edge-triggered (pressed this frame); movement is level-triggered.
+// input.js — keyboard + mouse state. ALL keys are lowercased (single-char AND
+// named keys like Enter/Escape/ArrowUp), so named keys never silently die.
+var AU_INPUT = (function () {
+  var keys = {};
+  var justPressed = {}; // edge-triggered: set on keydown, cleared only by pressed()
+  var mouse = { x: 640, y: 400, down: false, clicked: false };
+  var canvas = null;
 
-export const ACTION_CONFIRM = 1 << 0; // Enter / Space / click to advance
-export const ACTION_PAUSE = 1 << 1; // Esc or P
-export const ACTION_ENTER_CAR = 1 << 2; // E
-export const ACTION_INTERACT = 1 << 3; // E doubles as interact
-export const ACTION_MUTE = 1 << 4; // M
-export const ACTION_SAVE = 1 << 5; // F5 is the browser; use Q to quick-save
-export const ACTION_MISSIONS = 1 << 6; // Tab shows the mission list
+  function keyName(e) { return (e.key || '').toLowerCase(); }
 
-export function createInput(canvas) {
-  const keys = new Set();
-  const pressed = new Set();
-  const mouse = { x: 0, y: 0, down: false, clicked: false };
-  let actions = 0;
-
-  function keyName(event) {
-    // Lowercase everything: 'Enter' -> 'enter', 'ArrowUp' -> 'arrowup',
-    // 'Shift' -> 'shift', so the checks below never miss a key by case.
-    return event.key.toLowerCase();
+  function init(c) {
+    canvas = c;
+    window.addEventListener('keydown', function (e) {
+      var k = keyName(e);
+      if (k === ' ' || k === 'arrowup' || k === 'arrowdown' || k === 'arrowleft' || k === 'arrowright' || k === 'tab') e.preventDefault();
+      if (!e.repeat) justPressed[k] = true;
+      keys[k] = true;
+    });
+    window.addEventListener('keyup', function (e) { keys[keyName(e)] = false; });
+    window.addEventListener('blur', function () { for (var k in keys) keys[k] = false; });
+    c.addEventListener('mousemove', function (e) {
+      var r = c.getBoundingClientRect();
+      mouse.x = (e.clientX - r.left) * (c.width / r.width);
+      mouse.y = (e.clientY - r.top) * (c.height / r.height);
+    });
+    c.addEventListener('mousedown', function (e) {
+      if (e.button === 0) { mouse.down = true; mouse.clicked = true; }
+    });
+    window.addEventListener('mouseup', function () { mouse.down = false; });
+    c.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   }
 
-  window.addEventListener('keydown', (event) => {
-    const key = keyName(event);
-    if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'tab'].includes(key)) event.preventDefault();
-    if (!event.repeat) {
-      pressed.add(key);
-      if (key === 'enter' || key === ' ') actions |= ACTION_CONFIRM;
-      if (key === 'escape' || key === 'p') actions |= ACTION_PAUSE;
-      if (key === 'e') actions |= ACTION_ENTER_CAR | ACTION_INTERACT;
-      if (key === 'm') actions |= ACTION_MUTE;
-      if (key === 'q') actions |= ACTION_SAVE;
-      if (key === 'tab') actions |= ACTION_MISSIONS;
-    }
-    keys.add(key);
-  });
-  window.addEventListener('keyup', (event) => keys.delete(keyName(event)));
-  window.addEventListener('blur', () => keys.clear());
+  function down(k) { return !!keys[k.toLowerCase()]; }
+  function pressed(k) {
+    k = k.toLowerCase();
+    if (justPressed[k]) { justPressed[k] = false; return true; }
+    return false;
+  }
+  function consumeClick() { var c = mouse.clicked; mouse.clicked = false; return c; }
+  function clearTransient() { mouse.clicked = false; }
 
-  canvas.addEventListener('mousemove', (event) => {
-    const rect = canvas.getBoundingClientRect();
-    mouse.x = event.clientX - rect.left;
-    mouse.y = event.clientY - rect.top;
-  });
-  canvas.addEventListener('mousedown', (event) => {
-    if (event.button === 0) {
-      mouse.down = true;
-      mouse.clicked = true;
-      actions |= ACTION_CONFIRM;
-    }
-  });
-  window.addEventListener('mouseup', (event) => {
-    if (event.button === 0) mouse.down = false;
-  });
-  canvas.addEventListener('contextmenu', (event) => event.preventDefault());
-
-  return {
-    /** WASD/arrows as a -1..1 movement vector (x right, y down). */
-    moveVector() {
-      let x = 0;
-      let y = 0;
-      if (keys.has('a') || keys.has('arrowleft')) x -= 1;
-      if (keys.has('d') || keys.has('arrowright')) x += 1;
-      if (keys.has('w') || keys.has('arrowup')) y -= 1;
-      if (keys.has('s') || keys.has('arrowdown')) y += 1;
-      if (x !== 0 && y !== 0) {
-        x *= Math.SQRT1_2;
-        y *= Math.SQRT1_2;
-      }
-      return { x, y };
-    },
-    /** Shift held: run on foot. */
-    running() {
-      return keys.has('shift');
-    },
-    /** Throttle 0..1 (W/up), brake 0..1 (S/down), steer -1..1 (A/D). */
-    drive() {
-      const throttle = keys.has('w') || keys.has('arrowup') ? 1 : 0;
-      const brake = keys.has('s') || keys.has('arrowdown') ? 1 : 0;
-      let steer = 0;
-      if (keys.has('a') || keys.has('arrowleft')) steer -= 1;
-      if (keys.has('d') || keys.has('arrowright')) steer += 1;
-      return { throttle, brake, steer };
-    },
-    /** True while the left mouse button is held (firing). */
-    firing() {
-      return mouse.down;
-    },
-    /** True only on the frame the mouse was clicked. */
-    mouseClicked() {
-      return mouse.clicked;
-    },
-    mouse() {
-      return mouse;
-    },
-    /** Edge-triggered actions since the last take; clears them. */
-    takeActions() {
-      const taken = actions;
-      actions = 0;
-      mouse.clicked = false;
-      return taken;
-    },
-    /** Which keys were pressed this frame (for menu shortcuts). */
-    takePressed() {
-      const taken = new Set(pressed);
-      pressed.clear();
-      return taken;
-    },
-  };
-}
+  return { init: init, down: down, pressed: pressed, mouse: mouse,
+    consumeClick: consumeClick, clearTransient: clearTransient };
+})();
